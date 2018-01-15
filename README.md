@@ -3,6 +3,84 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+##Descriptions
+
+####Kinematic model
+
+The kinematic model as the following:
+
+```
+x[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+y[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+psi[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
+v[t+1] = v[t] + a[t] * dt
+cte[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
+epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
+```
+The above six parameters(`x`,`y`,`psi`,`v`,`cte`,`epsi`) are the state variables of the model. The two control inputs: steering angle(`delta`) and throttle(`a`).
+
+####N & dt
+
+N = 10 and dt = 0.1s. A larger N means that the controller has to do some unnecessary calculation, which makes the simulation to run much slower. dt=0.1s seems a good value to start with, and dt should not be too small, since the controller may do a lot meaningless controlling that does not reduce cost.
+
+####Coordinates Transformation
+
+To simply the calculation, we transformate  the coordinates so that the vehicle is at origin and psi is always 0. The code is as following:
+
+	for (int i = 0; i < n_pts; ++i){
+	    // set vehicle's initial position
+	    double shift_x = ptsx[i] - px;
+	    double shift_y = ptsy[i] - py;
+	    ptsx_vehicle[i] = (shift_x*cos(0-psi) - shift_y*sin(0-psi));
+	    ptsy_vehicle[i] = (shift_x*sin(0-psi) + shift_y*cos(0-psi));
+    }
+
+####Model Predictive States with Latency
+
+Instead of feeding the current state tu MPC, we use the current state and the above model to predict the state after latency, and feed it to MPC. The code is as following:
+
+	  	  double x0 = 0.0;
+          double y0 = 0.0;
+          double psi0 = 0.0;
+          double v0 = v;
+          double cte0 = y0 - coeffs[0];
+          double epsi0 = psi0 - atan(coeffs[1]); 
+
+          double Lf = 2.67;
+
+          double latency = 0.1;
+
+          double x1 = x0 + v0 * latency;
+          double y1 = y0;
+          double psi1 = - v0 / Lf * delta * latency;
+          double v1 = v0 + a * latency;
+          double f1 = polyeval(coeffs, x1);
+          double cte1 = y1 - f1;
+          double epsi1 = epsi0 - v0 / Lf * delta * latency;
+
+          Eigen::VectorXd state(6);
+          state << x1, y1, psi1, v1, cte1, epsi1;
+
+####Tuning MPC
+
+The MPC cost functions have a total of 7 terms. The first three terms tune the weights of vehicle's state tracking including position, heading and velocity. The following two terms focus on the minimiazaiton of the magnitude of control inputs: sterring angle (`delta`) and throttle (`a`). The last two terms are to avoid the abrupt changes in the control inputs.
+
+The weights need not be equal for cost components of cte and epsi. Relative weights more important than the absolute numbers, so we need to focus on the relative multipliers. That is - if having the low epsi is more important than having low cte then the multiplier for the cost of epsi will be much higher than the multiplier for cte. This is how I approached the problem.
+
+Observe the behaviour to tune weights. When the car drives around you can observe what is being greater preference by the solver. Eg, if the car wobbles but stays near the centre of the lane, you know more importance is being given to the cte than epsi. So in this case you would reduce the weight for cte or increase the weight for epsi.
+
+After a few trials, the final weights chosen for each cost term are given as the following:
+
+* position tracking error: 50.0
+* orientation tracking error: 500.0
+* velocity tracking error: 1.0
+* magnitude of steering angle: 1.0
+* magnitude of throttle: 1.0
+* first derivative of steering angle magnitude: 150000.0
+* first derivative of throttle magnitude: 1.0
+
+
+
 ## Dependencies
 
 * cmake >= 3.5
