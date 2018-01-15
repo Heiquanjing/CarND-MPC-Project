@@ -3,9 +3,9 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
-##Descriptions
+## Descriptions
 
-####Kinematic model
+#### Kinematic model
 
 The kinematic model as the following:
 
@@ -19,11 +19,11 @@ epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
 ```
 The above six parameters(`x`,`y`,`psi`,`v`,`cte`,`epsi`) are the state variables of the model. The two control inputs: steering angle(`delta`) and throttle(`a`).
 
-####N & dt
+#### N & dt
 
 N = 10 and dt = 0.1s. A larger N means that the controller has to do some unnecessary calculation, which makes the simulation to run much slower. dt=0.1s seems a good value to start with, and dt should not be too small, since the controller may do a lot meaningless controlling that does not reduce cost.
 
-####Coordinates Transformation
+#### Coordinates Transformation
 
 To simply the calculation, we transformate  the coordinates so that the vehicle is at origin and psi is always 0. The code is as following:
 
@@ -35,7 +35,7 @@ To simply the calculation, we transformate  the coordinates so that the vehicle 
 	    ptsy_vehicle[i] = (shift_x*sin(0-psi) + shift_y*cos(0-psi));
     }
 
-####Model Predictive States with Latency
+#### Model Predictive States with Latency
 
 Instead of feeding the current state tu MPC, we use the current state and the above model to predict the state after latency, and feed it to MPC. The code is as following:
 
@@ -61,7 +61,7 @@ Instead of feeding the current state tu MPC, we use the current state and the ab
           Eigen::VectorXd state(6);
           state << x1, y1, psi1, v1, cte1, epsi1;
 
-####Tuning MPC
+#### Tuning MPC
 
 The MPC cost functions have a total of 7 terms. The first three terms tune the weights of vehicle's state tracking including position, heading and velocity. The following two terms focus on the minimiazaiton of the magnitude of control inputs: sterring angle (`delta`) and throttle (`a`). The last two terms are to avoid the abrupt changes in the control inputs.
 
